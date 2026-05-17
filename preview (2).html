@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live HTML Studio</title>
+
+  <!-- Monaco Editor CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0b0f19;
+      --panel: rgba(20, 25, 40, 0.75);
+      --border: rgba(255,255,255,0.08);
+      --text: #ffffff;
+      --muted: #9ca3af;
+      --accent: #6d5dfc;
+      --accent2: #00d4ff;
+      --glass: blur(18px);
+    }
+
+    body {
+      height: 100vh;
+      overflow: hidden;
+      font-family: Inter, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(109,93,252,0.25), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(0,212,255,0.18), transparent 35%),
+        #0b0f19;
+      color: white;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* TOPBAR */
+
+    .topbar {
+      height: 74px;
+      min-height: 74px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: var(--glass);
+      background: rgba(10, 14, 24, 0.7);
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .left-top {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+      box-shadow: 0 0 30px rgba(109,93,252,0.4);
+    }
+
+    .title-wrap h1 {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .title-wrap p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .btn {
+      border: none;
+      outline: none;
+      padding: 12px 18px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: 0.25s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      box-shadow: 0 10px 25px rgba(109,93,252,0.35);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      opacity: 0.95;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    /* EDITOR AREA */
+
+    .workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .panel {
+      width: 50%;
+      height: 100%;
+      position: relative;
+    }
+
+    .panel-header {
+      height: 52px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #d1d5db;
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(10px);
+    }
+
+    #editor {
+      width: 100%;
+      height: calc(100% - 52px);
+    }
+
+    iframe {
+      width: 100%;
+      height: calc(100% - 52px);
+      border: none;
+      background: white;
+    }
+
+    .divider {
+      width: 1px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* RESPONSIVE */
+
+    @media(max-width: 900px) {
+      .workspace {
+        flex-direction: column;
+      }
+
+      .panel {
+        width: 100%;
+        height: 50%;
+      }
+
+      .divider {
+        width: 100%;
+        height: 1px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+
+    <div class="left-top">
+      <div class="logo">H</div>
+
+      <div class="title-wrap">
+        <h1>Live HTML Studio</h1>
+        <p>Modern real-time HTML editor & previewer</p>
+      </div>
+    </div>
+
+    <div class="actions">
+
+      <label for="uploadHTML" class="btn btn-secondary">
+        Upload HTML
+      </label>
+
+      <input type="file" id="uploadHTML" accept=".html,.htm" />
+
+      <button class="btn btn-primary" id="downloadBtn">
+        Download HTML
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- WORKSPACE -->
+  <div class="workspace">
+
+    <!-- LEFT -->
+    <div class="panel">
+
+      <div class="panel-header">
+        HTML Editor
+      </div>
+
+      <div id="editor"></div>
+
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- RIGHT -->
+    <div class="panel">
+
+      <div class="panel-header">
+        Live Preview
+      </div>
+
+      <iframe id="preview"></iframe>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  let editor;
+
+  const defaultHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <title>My Website</title>
+
+  <style>
+    body{
+      font-family: Arial;
+      background:#111827;
+      color:white;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      margin:0;
+    }
+
+    .card{
+      background:#1f2937;
+      padding:40px;
+      border-radius:20px;
+      text-align:center;
+      box-shadow:0 10px 40px rgba(0,0,0,0.4);
+    }
+
+    h1{
+      color:#6d5dfc;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+    <h1>Live HTML Studio</h1>
+    <p>Start editing your HTML code.</p>
+  </div>
+
+</body>
+</html>`;
+
+  // MONACO LOADER
+
+  require.config({
+    paths: {
+      vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs"
+    }
+  });
+
+  require(["vs/editor/editor.main"], function () {
+
+    editor = monaco.editor.create(document.getElementById("editor"), {
+      value: defaultHTML,
+      language: "html",
+      theme: "vs-dark",
+      fontSize: 15,
+      automaticLayout: true,
+      minimap: {
+        enabled: false
+      },
+      smoothScrolling: true,
+      roundedSelection: true,
+      cursorBlinking: "smooth",
+      padding: {
+        top: 20
+      }
+    });
+
+    updatePreview();
+
+    editor.onDidChangeModelContent(() => {
+      updatePreview();
+    });
+  });
+
+  // LIVE PREVIEW
+
+  function updatePreview() {
+    const preview = document.getElementById("preview");
+    const code = editor.getValue();
+
+    preview.srcdoc = code;
+  }
+
+  // FILE UPLOAD
+
+  document.getElementById("uploadHTML")
+    .addEventListener("change", function(event) {
+
+      const file = event.target.files[0];
+
+      if (!file) return;
+
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        editor.setValue(e.target.result);
+      };
+
+      reader.readAsText(file);
+    });
+
+  // DOWNLOAD
+
+  document.getElementById("downloadBtn")
+    .addEventListener("click", function() {
+
+      const code = editor.getValue();
+
+      const blob = new Blob([code], {
+        type: "text/html"
+      });
+
+      const a = document.createElement("a");
+
+      a.href = URL.createObjectURL(blob);
+
+      a.download = "edited-file.html";
+
+      a.click();
+
+      URL.revokeObjectURL(a.href);
+    });
+
+</script>
+
+</body>
+</html>

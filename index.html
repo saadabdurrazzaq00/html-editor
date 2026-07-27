@@ -1,283 +1,530 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Live HTML Studio</title>
+<meta charset="UTF-8">
+<title>Live HTML Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root{
+    --bg-0:#0a0e17;
+    --bg-1:#0f1420;
+    --panel:rgba(20,26,40,0.55);
+    --panel-solid:#141a28;
+    --border:rgba(255,255,255,0.08);
+    --border-hover:rgba(255,255,255,0.16);
+    --accent:#7c9dff;
+    --accent-2:#8f6fff;
+    --text:#e6e9f2;
+    --text-dim:#8891a8;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(124,157,255,0.12), transparent 45%),
+      radial-gradient(circle at 85% 100%, rgba(143,111,255,0.10), transparent 45%),
+      var(--bg-0);
+    color:var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    overflow:hidden;
+  }
+  .app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+  }
 
-  <!-- Monaco Editor CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js"></script>
+  /* Topbar */
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:12px 20px;
+    background:var(--panel);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-bottom:1px solid var(--border);
+    z-index:10;
+  }
+  .logo{
+    width:34px;height:34px;
+    border-radius:10px;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;
+    font-size:15px;
+    color:#0a0e17;
+    box-shadow:0 4px 18px rgba(124,157,255,0.35);
+    flex-shrink:0;
+  }
+  .title-block{display:flex;flex-direction:column;margin-right:auto;}
+  .title-block h1{
+    font-size:15px;margin:0;font-weight:600;letter-spacing:0.2px;
+  }
+  .title-block span{
+    font-size:11px;color:var(--text-dim);
+  }
+  .btn{
+    display:flex;align-items:center;gap:7px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:10px;
+    font-size:13px;
+    cursor:pointer;
+    transition:all .18s ease;
+    white-space:nowrap;
+  }
+  .btn:hover{
+    background:rgba(255,255,255,0.09);
+    border-color:var(--border-hover);
+    transform:translateY(-1px);
+  }
+  .btn:active{transform:translateY(0);}
+  .btn.primary{
+    background:linear-gradient(135deg, var(--accent), var(--accent-2));
+    border:none;color:#0a0e17;font-weight:600;
+  }
+  .btn.primary:hover{
+    box-shadow:0 4px 16px rgba(124,157,255,0.35);
+  }
+  .btn svg{width:15px;height:15px;flex-shrink:0;}
+  #fileInput{display:none;}
 
-  <style>
-    /* ----- Your original CSS (unchanged) ----- */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+  .status-dot{
+    width:7px;height:7px;border-radius:50%;
+    background:#5ee6a0;
+    box-shadow:0 0 8px #5ee6a0;
+    margin-right:4px;
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;}
+    50%{opacity:0.4;}
+  }
 
-    :root {
-      --bg: #0b0f19;
-      --panel: rgba(20, 25, 40, 0.75);
-      --border: rgba(255,255,255,0.08);
-      --text: #ffffff;
-      --muted: #9ca3af;
-      --accent: #6d5dfc;
-      --accent2: #00d4ff;
-      --glass: blur(18px);
-    }
+  /* Workspace */
+  .workspace{
+    flex:1;
+    display:flex;
+    min-height:0;
+  }
+  .pane{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    min-height:0;
+    position:relative;
+  }
+  .pane-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:9px 16px;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.8px;
+    color:var(--text-dim);
+    background:rgba(255,255,255,0.02);
+    border-bottom:1px solid var(--border);
+  }
+  .pane-header .dot-row{display:flex;gap:6px;}
+  .pane-header .dot-row span{
+    width:9px;height:9px;border-radius:50%;
+    display:inline-block;
+  }
+  .d-red{background:#ff5f57;}
+  .d-yellow{background:#febc2e;}
+  .d-green{background:#28c840;}
 
-    body {
-      height: 100vh; overflow: hidden; font-family: Inter, sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(109,93,252,0.25), transparent 30%),
-        radial-gradient(circle at bottom right, rgba(0,212,255,0.18), transparent 35%),
-        #0b0f19;
-      color: white;
-    }
+  #editor-container{
+    flex:1;
+    min-height:0;
+  }
 
-    .app { display: flex; flex-direction: column; height: 100vh; }
+  .divider{
+    width:1px;
+    background:var(--border);
+    position:relative;
+  }
 
-    .topbar {
-      height: 74px; min-height: 74px; padding: 0 24px;
-      border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(18px); background: rgba(10, 14, 24, 0.7);
-      display: flex; align-items: center; justify-content: space-between;
-    }
+  .preview-pane{
+    background:#0d111b;
+  }
+  .preview-frame-wrap{
+    flex:1;
+    min-height:0;
+    position:relative;
+    background:#ffffff;
+  }
+  iframe#preview{
+    width:100%;
+    height:100%;
+    border:none;
+    display:block;
+    background:#fff;
+  }
 
-    .left-top { display: flex; align-items: center; gap: 18px; }
-    .logo {
-      width: 44px; height: 44px; border-radius: 14px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px; font-weight: bold;
-      box-shadow: 0 0 30px rgba(109,93,252,0.4);
-    }
-    .title-wrap h1 { font-size: 20px; font-weight: 700; }
-    .title-wrap p { font-size: 13px; color: var(--muted); margin-top: 2px; }
-
-    .actions { display: flex; align-items: center; gap: 14px; }
-    .btn {
-      border: none; outline: none; padding: 12px 18px; border-radius: 14px;
-      cursor: pointer; font-size: 14px; font-weight: 600; transition: 0.25s ease;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: white; box-shadow: 0 10px 25px rgba(109,93,252,0.35);
-    }
-    .btn-primary:hover { transform: translateY(-2px); opacity: 0.95; }
-    .btn-secondary {
-      background: rgba(255,255,255,0.06); color: white;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .btn-secondary:hover { background: rgba(255,255,255,0.12); }
-    input[type="file"] { display: none; }
-
-    .workspace { flex: 1; display: flex; overflow: hidden; }
-    .panel { width: 50%; height: 100%; position: relative; }
-    .panel-header {
-      height: 52px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; padding: 0 18px;
-      font-size: 14px; font-weight: 600; color: #d1d5db;
-      background: rgba(255,255,255,0.03); backdrop-filter: blur(10px);
-    }
-    #editor { width: 100%; height: calc(100% - 52px); }
-    iframe { width: 100%; height: calc(100% - 52px); border: none; background: white; }
-    .divider { width: 1px; background: rgba(255,255,255,0.08); }
-
-    @media(max-width: 900px) {
-      .workspace { flex-direction: column; }
-      .panel { width: 100%; height: 50%; }
-      .divider { width: 100%; height: 1px; }
-    }
-  </style>
+  /* Responsive */
+  @media (max-width: 860px){
+    .workspace{flex-direction:column;}
+    .divider{width:100%;height:1px;}
+    .pane{flex:none;}
+    #editor-container{height:45vh;}
+    .preview-frame-wrap{height:45vh;}
+    .title-block span{display:none;}
+  }
+</style>
 </head>
-
 <body>
 
 <div class="app">
   <div class="topbar">
-    <div class="left-top">
-      <div class="logo">H</div>
-      <div class="title-wrap">
-        <h1>Live HTML Studio</h1>
-        <p>Modern real-time HTML editor & previewer</p>
-      </div>
+    <div class="logo">&lt;/&gt;</div>
+    <div class="title-block">
+      <h1>Live HTML Studio</h1>
+      <span>Real-time editor &amp; preview</span>
     </div>
-    <div class="actions">
-      <label for="uploadHTML" class="btn btn-secondary">Upload HTML</label>
-      <input type="file" id="uploadHTML" accept=".html,.htm" />
-      <button class="btn btn-primary" id="downloadBtn">Download HTML</button>
-    </div>
+
+    <input type="file" id="fileInput" accept=".html,.htm,text/html">
+    <button class="btn" id="uploadBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M6 9l6-6 6 6M4 21h16"/></svg>
+      Upload HTML
+    </button>
+    <button class="btn primary" id="downloadBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M6 9l6 6 6-6M4 21h16"/></svg>
+      Download HTML
+    </button>
   </div>
 
   <div class="workspace">
-    <div class="panel">
-      <div class="panel-header">HTML Editor</div>
-      <div id="editor"></div>
+    <div class="pane editor-pane">
+      <div class="pane-header">
+        <div class="dot-row"><span class="d-red"></span><span class="d-yellow"></span><span class="d-green"></span></div>
+        <span><span class="status-dot"></span>index.html</span>
+      </div>
+      <div id="editor-container"></div>
     </div>
+
     <div class="divider"></div>
-    <div class="panel">
-      <div class="panel-header">Live Preview</div>
-      <iframe id="preview"></iframe>
+
+    <div class="pane preview-pane">
+      <div class="pane-header">
+        <span>Preview</span>
+        <span id="syncBadge">sync: body</span>
+      </div>
+      <div class="preview-frame-wrap">
+        <iframe id="preview" title="live preview" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
+      </div>
     </div>
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js"></script>
 <script>
-  let editor;
+(function(){
+  "use strict";
 
-  const defaultHTML = `<!DOCTYPE html>
-<html>
-<head>
-  <title>My Website</title>
-  <style>
-    /* Imagine 200 lines of CSS here – scrolling them won’t move the preview */
-    body {
-      font-family: Arial;
-      background: #111827;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .card {
-      background: #1f2937;
-      padding: 40px;
-      border-radius: 20px;
-      text-align: center;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-    }
-    h1 { color: #6d5dfc; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Live HTML Studio</h1>
-    <p>Start editing your HTML code.</p>
-  </div>
-</body>
-</html>`;
+  var DEFAULT_HTML =
+'<!DOCTYPE html>\n' +
+'<html lang="en">\n' +
+'<head>\n' +
+'<meta charset="UTF-8">\n' +
+'<title>My Page</title>\n' +
+'<style>\n' +
+'  body{\n' +
+'    margin:0;\n' +
+'    font-family: system-ui, sans-serif;\n' +
+'    background:#f6f7fb;\n' +
+'    color:#1a1d29;\n' +
+'  }\n' +
+'  .hero{\n' +
+'    padding:80px 40px;\n' +
+'    text-align:center;\n' +
+'    background:linear-gradient(135deg,#6a8dff,#a06bff);\n' +
+'    color:#fff;\n' +
+'  }\n' +
+'  .hero h1{ font-size:42px; margin:0 0 12px; }\n' +
+'  .section{\n' +
+'    max-width:720px;\n' +
+'    margin:0 auto;\n' +
+'    padding:60px 24px;\n' +
+'  }\n' +
+'  .card{\n' +
+'    background:#fff;\n' +
+'    border-radius:12px;\n' +
+'    padding:24px;\n' +
+'    margin-bottom:20px;\n' +
+'    box-shadow:0 4px 18px rgba(0,0,0,0.06);\n' +
+'  }\n' +
+'</style>\n' +
+'<script>\n' +
+'  // Some JS up here, in the head, should not affect scroll sync either.\n' +
+'  function noop(){ return 1 + 1; }\n' +
+'  console.log("Loaded", noop());\n' +
+'<\/script>\n' +
+'</head>\n' +
+'<body>\n' +
+'\n' +
+'  <div class="hero">\n' +
+'    <h1>Welcome to Live HTML Studio</h1>\n' +
+'    <p>Edit the code on the left — this preview updates as you type.</p>\n' +
+'  </div>\n' +
+'\n' +
+'  <div class="section">\n' +
+'    <div class="card">\n' +
+'      <h2>Scroll me!</h2>\n' +
+'      <p>Try scrolling through this body content in the editor — the preview will follow along proportionally.</p>\n' +
+'    </div>\n' +
+'    <div class="card">\n' +
+'      <h2>But not the CSS/JS above</h2>\n' +
+'      <p>Scroll up into the &lt;style&gt; or &lt;script&gt; blocks at the top of the file and the preview will stay perfectly still.</p>\n' +
+'    </div>\n' +
+'    <div class="card">\n' +
+'      <h2>Card three</h2>\n' +
+'      <p>Padding content so this file has some real length to scroll through.</p>\n' +
+'    </div>\n' +
+'    <div class="card">\n' +
+'      <h2>Card four</h2>\n' +
+'      <p>Keep scrolling to see the sync in action, all the way to the bottom.</p>\n' +
+'    </div>\n' +
+'    <div class="card">\n' +
+'      <h2>Card five</h2>\n' +
+'      <p>This is near the bottom of the body content.</p>\n' +
+'    </div>\n' +
+'  </div>\n' +
+'\n' +
+'</body>\n' +
+'</html>\n';
 
-  require.config({
-    paths: { vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs" }
-  });
+  var editor = null;
+  var previewEl = document.getElementById('preview');
+  var debounceTimer = null;
+  var DEBOUNCE_MS = 250;
 
-  require(["vs/editor/editor.main"], function () {
+  // Guards so programmatic preview reloads don't fight with user-driven syncing.
+  var isApplyingScrollSync = false;
 
-    editor = monaco.editor.create(document.getElementById("editor"), {
-      value: defaultHTML,
-      language: "html",
-      theme: "vs-dark",
-      fontSize: 15,
+  // ---------- Monaco bootstrap ----------
+  require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs' } });
+  require(['vs/editor/editor.main'], function () {
+    editor = monaco.editor.create(document.getElementById('editor-container'), {
+      value: DEFAULT_HTML,
+      language: 'html',
+      theme: 'vs-dark',
       automaticLayout: true,
-      minimap: { enabled: false },
+      minimap: { enabled: true },
+      fontSize: 13.5,
+      lineHeight: 21,
+      wordWrap: 'off',
+      scrollBeyondLastLine: false,
       smoothScrolling: true,
-      roundedSelection: true,
-      cursorBlinking: "smooth",
-      padding: { top: 20 }
+      renderLineHighlight: 'all',
+      padding: { top: 12 }
     });
 
-    const preview = document.getElementById("preview");
+    // Initial render
+    updatePreview(true);
 
-    // ----- 1. Preserve preview scroll position after update -----
-    function updatePreview() {
-      let scrollX = 0, scrollY = 0;
-      if (preview.contentWindow) {
-        scrollX = preview.contentWindow.scrollX;
-        scrollY = preview.contentWindow.scrollY;
-      }
-      preview.srcdoc = editor.getValue();
-      preview.onload = () => {
-        preview.contentWindow.scrollTo(scrollX, scrollY);
-      };
+    editor.onDidChangeModelContent(function () {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function(){
+        updatePreview(false);
+      }, DEBOUNCE_MS);
+    });
+
+    editor.onDidScrollChange(function () {
+      if (isApplyingScrollSync) return;
+      syncPreviewScrollFromEditor();
+    });
+  });
+
+  // ---------- Find where <body> content starts, by line number ----------
+  // Returns the 1-based line number of the first line AFTER the opening
+  // <body ...> tag. If no <body> tag is found, falls back to line 1
+  // (whole document is treated as "content").
+  function getBodyStartLine(model) {
+    var totalLines = model.getLineCount();
+    var bodyTagMatch = model.findNextMatch(
+      '<body[^>]*>',
+      { lineNumber: 1, column: 1 },
+      true,   // isRegex
+      false,  // matchCase
+      null,   // wordSeparators
+      false   // captureMatches
+    );
+
+    if (!bodyTagMatch) {
+      return 1;
     }
 
-    // ----- 2. Content‑aware scroll sync -----
-    editor.onDidScrollChange(() => {
-      if (!preview.contentWindow) return;
+    var endLine = bodyTagMatch.range.endLineNumber;
+    var endColumn = bodyTagMatch.range.endColumn;
+    var lineLength = model.getLineMaxColumn(endLine);
 
-      const model = editor.getModel();
-      const code = model.getValue();
-      const totalLines = model.getLineCount();
+    // If the <body> tag ends mid-line and there's more content after it on
+    // that same line, content effectively starts on that line itself.
+    // Otherwise content starts on the next line.
+    if (endColumn < lineLength) {
+      return endLine;
+    }
+    var nextLine = endLine + 1;
+    return Math.min(nextLine, totalLines);
+  }
 
-      // Find the start of the <body> content (fallback to 0 if not found)
-      let contentStartLine = 0;
-      const bodyMatch = code.match(/<body[^>]*>/i);
-      if (bodyMatch) {
-        const pos = model.getPositionAt(bodyMatch.index);
-        contentStartLine = pos.lineNumber - 1; // convert to 0-based
+  // ---------- Compute 0..1 scroll percentage of the editor's VIEWPORT
+  // within the "content region" (bodyStartLine .. lastLine), in pixel space ----------
+  function computeContentScrollPercentage() {
+    if (!editor) return null;
+    var model = editor.getModel();
+    if (!model) return null;
+
+    var totalLines = model.getLineCount();
+    var bodyStartLine = getBodyStartLine(model);
+    var lastLine = totalLines;
+
+    // Pixel top of the first content line and pixel bottom of the last line.
+    var contentTop = editor.getTopForLineNumber(bodyStartLine);
+    var contentBottom = editor.getBottomForLineNumber(lastLine);
+    var contentHeight = Math.max(1, contentBottom - contentTop);
+
+    var scrollTop = editor.getScrollTop();
+    var viewportHeight = editor.getLayoutInfo().height;
+    var viewportCenter = scrollTop + (viewportHeight / 2);
+
+    // How far into the content region is the *center* of the current viewport?
+    var raw = (viewportCenter - contentTop) / contentHeight;
+
+    // Clamp 0..1 — scrolling above body start pins to 0 (top of preview),
+    // scrolling past the end pins to 1 (bottom of preview).
+    if (raw < 0) raw = 0;
+    if (raw > 1) raw = 1;
+
+    return {
+      percent: raw,
+      bodyStartLine: bodyStartLine,
+      isAboveContent: (scrollTop + viewportHeight) < contentTop, // viewport entirely above body content
+      isInOrBelowContent: scrollTop < contentBottom
+    };
+  }
+
+  function syncPreviewScrollFromEditor() {
+    if (!previewEl || !previewEl.contentWindow || !previewEl.contentDocument) return;
+
+    var info = computeContentScrollPercentage();
+    if (!info) return;
+
+    var doc = previewEl.contentDocument;
+    var scrollEl = doc.scrollingElement || doc.documentElement || doc.body;
+    if (!scrollEl) return;
+
+    var maxScroll = Math.max(0, scrollEl.scrollHeight - previewEl.clientHeight);
+
+    // If the editor's viewport hasn't reached the <body> content region at all
+    // (i.e. we're purely up in <head>/<style>/<script>), don't move the preview.
+    if (info.isAboveContent) {
+      updateSyncBadge('above body — preview still');
+      return;
+    }
+
+    var target = Math.round(maxScroll * info.percent);
+
+    isApplyingScrollSync = true;
+    try {
+      // Prefer smooth-ish direct assignment; scrollTo is broadly supported
+      // inside srcdoc iframes with same-origin access.
+      scrollEl.scrollTop = target;
+    } catch (e) {
+      // no-op — cross navigation edge cases
+    }
+    isApplyingScrollSync = false;
+
+    updateSyncBadge('body · ' + Math.round(info.percent * 100) + '%');
+  }
+
+  function updateSyncBadge(text) {
+    var badge = document.getElementById('syncBadge');
+    if (badge) badge.textContent = 'sync: ' + text;
+  }
+
+  // ---------- Preview update, preserving scroll position across reload ----------
+  function updatePreview(isInitial) {
+    if (!editor) return;
+    var html = editor.getValue();
+
+    var prevScrollX = 0;
+    var prevScrollY = 0;
+
+    if (!isInitial && previewEl.contentWindow) {
+      try {
+        prevScrollX = previewEl.contentWindow.scrollX || 0;
+        prevScrollY = previewEl.contentWindow.scrollY || 0;
+      } catch (e) {
+        prevScrollX = 0;
+        prevScrollY = 0;
       }
+    }
 
-      // We consider content from <body> to end of file
-      const contentEndLine = totalLines;
-      const contentLines = contentEndLine - contentStartLine;
-
-      // Editor's current scroll top (in pixels)
-      const editorScroll = editor.getScrollTop();
-      const editorLayout = editor.getLayoutInfo();
-
-      // Get the pixel positions of the content start/end lines
-      const topOfContent = editor.getTopForLineNumber(contentStartLine + 1);
-      const bottomOfContent = editor.getBottomForLineNumber(contentEndLine);
-      const contentHeight = bottomOfContent - topOfContent;
-
-      // Calculate how far the viewport is into the content region
-      const viewportTop = editorScroll;
-      const viewportBottom = editorScroll + editorLayout.height;
-
-      let percent = 0;
-
-      if (viewportTop >= bottomOfContent) {
-        percent = 1; // scrolled past all content
-      } else if (viewportBottom <= topOfContent) {
-        percent = 0; // haven't reached content yet
-      } else {
-        // Viewport overlaps the content region – map the overlap centre or top
-        const visibleTop = Math.max(viewportTop, topOfContent);
-        const visibleBottom = Math.min(viewportBottom, bottomOfContent);
-        const visibleCentre = (visibleTop + visibleBottom) / 2;
-        percent = (visibleCentre - topOfContent) / contentHeight;
-        percent = Math.max(0, Math.min(1, percent));
+    previewEl.onload = function () {
+      try {
+        if (!isInitial) {
+          previewEl.contentWindow.scrollTo(prevScrollX, prevScrollY);
+        }
+      } catch (e) {
+        // ignore — restoring scroll is best-effort
       }
+    };
 
-      // Apply percentage to preview
-      const doc = preview.contentDocument?.documentElement;
-      if (!doc) return;
-      const previewHeight = doc.scrollHeight - preview.contentWindow.innerHeight;
-      preview.contentWindow.scrollTo({
-        top: previewHeight * percent,
-        behavior: "auto"
-      });
-    });
+    previewEl.srcdoc = html;
+  }
 
-    // ----- 3. Debounced preview update (250 ms) -----
-    let previewTimer;
-    editor.onDidChangeModelContent(() => {
-      clearTimeout(previewTimer);
-      previewTimer = setTimeout(updatePreview, 250);
-    });
+  // ---------- Upload ----------
+  var uploadBtn = document.getElementById('uploadBtn');
+  var fileInput = document.getElementById('fileInput');
 
-    // Initial load
-    updatePreview();
+  uploadBtn.addEventListener('click', function () {
+    fileInput.click();
   });
 
-  // ----- File upload / download (unchanged) -----
-  document.getElementById("uploadHTML").addEventListener("change", function(e) {
-    const file = e.target.files[0];
+  fileInput.addEventListener('change', function (e) {
+    var file = e.target.files && e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev) { editor.setValue(ev.target.result); };
+
+    var reader = new FileReader();
+    reader.onload = function (evt) {
+      var text = evt.target.result;
+      if (editor) {
+        editor.setValue(text);
+        editor.setScrollPosition({ scrollTop: 0 });
+        updatePreview(true);
+      }
+    };
     reader.readAsText(file);
+
+    // reset so selecting the same file again still fires "change"
+    fileInput.value = '';
   });
 
-  document.getElementById("downloadBtn").addEventListener("click", function() {
-    const code = editor.getValue();
-    const blob = new Blob([code], { type: "text/html" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "edited-file.html";
+  // ---------- Download ----------
+  var downloadBtn = document.getElementById('downloadBtn');
+  downloadBtn.addEventListener('click', function () {
+    if (!editor) return;
+    var content = editor.getValue();
+    var blob = new Blob([content], { type: 'text/html' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'index.html';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(a.href);
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   });
+
+})();
 </script>
 </body>
 </html>

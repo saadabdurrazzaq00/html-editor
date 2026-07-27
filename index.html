@@ -305,7 +305,6 @@
   var debounceTimer = null;
   var DEBOUNCE_MS = 250;
 
-  // Guards so programmatic preview reloads don't fight with user-driven syncing.
   var isApplyingScrollSync = false;
 
   // ---------- Monaco bootstrap ----------
@@ -326,7 +325,6 @@
       padding: { top: 12 }
     });
 
-    // Initial render
     updatePreview(true);
 
     editor.onDidChangeModelContent(function () {
@@ -343,18 +341,12 @@
   });
 
   // ---------- Find where <body> content starts, by line number ----------
-  // Returns the 1-based line number of the first line AFTER the opening
-  // <body ...> tag. If no <body> tag is found, falls back to line 1
-  // (whole document is treated as "content").
   function getBodyStartLine(model) {
     var totalLines = model.getLineCount();
     var bodyTagMatch = model.findNextMatch(
       '<body[^>]*>',
       { lineNumber: 1, column: 1 },
-      true,   // isRegex
-      false,  // matchCase
-      null,   // wordSeparators
-      false   // captureMatches
+      true, false, null, false
     );
 
     if (!bodyTagMatch) {
@@ -365,9 +357,6 @@
     var endColumn = bodyTagMatch.range.endColumn;
     var lineLength = model.getLineMaxColumn(endLine);
 
-    // If the <body> tag ends mid-line and there's more content after it on
-    // that same line, content effectively starts on that line itself.
-    // Otherwise content starts on the next line.
     if (endColumn < lineLength) {
       return endLine;
     }
@@ -375,8 +364,12 @@
     return Math.min(nextLine, totalLines);
   }
 
-  // ---------- Compute 0..1 scroll percentage of the editor's VIEWPORT
-  // within the "content region" (bodyStartLine .. lastLine), in pixel space ----------
+  // ---------- Compute 0..1 percentage, anchored on TOP edges, not centers ----------
+  // This is the fix: we now compare "how far has the TOP of my editor viewport
+  // moved into the content region" against "how far should the TOP of the
+  // preview's visible area move down the rendered page" — same reference
+  // point on both sides, so what you see at the top of the editor pane lines
+  // up with what you see at the top of the preview pane.
   function computeContentScrollPercentage() {
     if (!editor) return null;
     var model = editor.getModel();
@@ -386,28 +379,24 @@
     var bodyStartLine = getBodyStartLine(model);
     var lastLine = totalLines;
 
-    // Pixel top of the first content line and pixel bottom of the last line.
     var contentTop = editor.getTopForLineNumber(bodyStartLine);
     var contentBottom = editor.getBottomForLineNumber(lastLine);
     var contentHeight = Math.max(1, contentBottom - contentTop);
 
     var scrollTop = editor.getScrollTop();
     var viewportHeight = editor.getLayoutInfo().height;
-    var viewportCenter = scrollTop + (viewportHeight / 2);
 
-    // How far into the content region is the *center* of the current viewport?
-    var raw = (viewportCenter - contentTop) / contentHeight;
+    // Use the TOP of the viewport as the reference point (was: center).
+    var raw = (scrollTop - contentTop) / contentHeight;
 
-    // Clamp 0..1 — scrolling above body start pins to 0 (top of preview),
-    // scrolling past the end pins to 1 (bottom of preview).
     if (raw < 0) raw = 0;
     if (raw > 1) raw = 1;
 
     return {
       percent: raw,
-      bodyStartLine: bodyStartLine,
-      isAboveContent: (scrollTop + viewportHeight) < contentTop, // viewport entirely above body content
-      isInOrBelowContent: scrollTop < contentBottom
+      isAboveContent: (scrollTop + viewportHeight) < contentTop,
+      contentHeight: contentHeight,
+      editorViewportHeight: viewportHeight
     };
   }
 
@@ -421,25 +410,21 @@
     var scrollEl = doc.scrollingElement || doc.documentElement || doc.body;
     if (!scrollEl) return;
 
-    var maxScroll = Math.max(0, scrollEl.scrollHeight - previewEl.clientHeight);
-
-    // If the editor's viewport hasn't reached the <body> content region at all
-    // (i.e. we're purely up in <head>/<style>/<script>), don't move the preview.
     if (info.isAboveContent) {
       updateSyncBadge('above body — preview still');
       return;
     }
 
+    // Max scroll for the TOP of the preview viewport to reach (so its own
+    // viewport-height's-worth of content still fits below it), matching how
+    // we measured the editor's top edge above.
+    var maxScroll = Math.max(0, scrollEl.scrollHeight - previewEl.clientHeight);
     var target = Math.round(maxScroll * info.percent);
 
     isApplyingScrollSync = true;
     try {
-      // Prefer smooth-ish direct assignment; scrollTo is broadly supported
-      // inside srcdoc iframes with same-origin access.
       scrollEl.scrollTop = target;
-    } catch (e) {
-      // no-op — cross navigation edge cases
-    }
+    } catch (e) {}
     isApplyingScrollSync = false;
 
     updateSyncBadge('body · ' + Math.round(info.percent * 100) + '%');
@@ -473,9 +458,7 @@
         if (!isInitial) {
           previewEl.contentWindow.scrollTo(prevScrollX, prevScrollY);
         }
-      } catch (e) {
-        // ignore — restoring scroll is best-effort
-      }
+      } catch (e) {}
     };
 
     previewEl.srcdoc = html;
@@ -503,8 +486,6 @@
       }
     };
     reader.readAsText(file);
-
-    // reset so selecting the same file again still fires "change"
     fileInput.value = '';
   });
 

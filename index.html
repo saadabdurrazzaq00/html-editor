@@ -328,21 +328,53 @@
       }
     });
 
-    updatePreview();
-
-    editor.onDidChangeModelContent(() => {
-      updatePreview();
-    });
-  });
-
-  // LIVE PREVIEW
-
-  function updatePreview() {
     const preview = document.getElementById("preview");
-    const code = editor.getValue();
 
-    preview.srcdoc = code;
-  }
+    // ---------- 1. Preserve preview scroll position ----------
+    function updatePreview() {
+      let scrollX = 0;
+      let scrollY = 0;
+
+      if (preview.contentWindow) {
+        scrollX = preview.contentWindow.scrollX;
+        scrollY = preview.contentWindow.scrollY;
+      }
+
+      preview.srcdoc = editor.getValue();
+
+      preview.onload = () => {
+        preview.contentWindow.scrollTo(scrollX, scrollY);
+      };
+    }
+
+    // ---------- 2. Sync editor scrolling → preview scrolling ----------
+    editor.onDidScrollChange(() => {
+      if (!preview.contentWindow) return;
+
+      const editorScroll = editor.getScrollTop();
+      const editorHeight = editor.getScrollHeight() - editor.getLayoutInfo().height;
+      const percent = editorHeight <= 0 ? 0 : editorScroll / editorHeight;
+
+      const doc = preview.contentDocument?.documentElement;
+      if (!doc) return;
+
+      const previewHeight = doc.scrollHeight - preview.contentWindow.innerHeight;
+      preview.contentWindow.scrollTo({
+        top: previewHeight * percent,
+        behavior: "auto"
+      });
+    });
+
+    // ---------- 3. Debounced preview update (250ms) ----------
+    let previewTimer;
+    editor.onDidChangeModelContent(() => {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(updatePreview, 250);
+    });
+
+    // Initial load
+    updatePreview();
+  });
 
   // FILE UPLOAD
 
